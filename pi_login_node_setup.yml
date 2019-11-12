@@ -91,31 +91,38 @@
 
       host {{pi_node01_name}} {
       hardware ethernet {{pi_node01_mac}};
-      fixed-address {{pi_node01_ip}};}
+      fixed-address {{pi_node01_ip}};
+      option host-name {{pi_node01_name}};}
 
       host {{pi_node02_name}} {
       hardware ethernet {{pi_node02_mac}};
-      fixed-address {{pi_node02_ip}};}
+      fixed-address {{pi_node02_ip}};
+      option host-name {{pi_node02_name}};}
 
       host {{pi_node03_name}} {
       hardware ethernet {{pi_node03_mac}};
-      fixed-address {{pi_node03_ip}};}
+      fixed-address {{pi_node03_ip}};
+      option host-name {{pi_node03_name}};}
 
       host {{pi_node04_name}} {
       hardware ethernet {{pi_node04_mac}};
-      fixed-address {{pi_node04_ip}};}
+      fixed-address {{pi_node04_ip}};
+      option host-name {{pi_node04_name}};}
 
       host {{pi_node05_name}} {
       hardware ethernet {{pi_node05_mac}};
-      fixed-address {{pi_node05_ip}};}
+      fixed-address {{pi_node05_ip}};
+      option host-name {{pi_node05_name}};}
 
       host {{pi_node06_name}} {
       hardware ethernet {{pi_node06_mac}};
-      fixed-address {{pi_node06_ip}};}
+      fixed-address {{pi_node06_ip}};
+      option host-name {{pi_node06_name}};}
 
       host {{pi_node07_name}} {
       hardware ethernet {{pi_node07_mac}};
-      fixed-address {{pi_node07_ip}};}"
+      fixed-address {{pi_node07_ip}};
+      option host-name {{pi_node07_name}};}"
 
 
   - name: Restart DHCP server
