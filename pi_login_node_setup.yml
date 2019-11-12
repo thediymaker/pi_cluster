@@ -1,0 +1,286 @@
+#
+#
+#       .~~.   .~~.
+#      '. \ ' ' / .'
+#       .~ .~~~..~.                       _                          _
+#      : .~.'~'.~. :      ___ ___ ___ ___| |_ ___ ___ ___ _ _    ___|_|
+#     ~ (   ) (   ) ~    |  _| .'|_ -| . | . | -_|  _|  _| | |  | . | |
+#    ( : '~'.~.'~' : )   |_| |__,|___|  _|___|___|_| |_| |_  |  |  _|_|
+#     ~ .~ (   ) ~. ~                |_|                 |___|  |_|
+#      (  : '~' :  )      ___ _   _ _ ___ _____ ___ ___
+#       '~ .~~~. ~'      | __| |_| | |_ -|_   _| -_| -_|
+#           '~'          |___|___|___|___| |_| |___|_|_|
+#
+---
+- hosts: pi_login
+  become_user: root
+  become: yes
+############## INSTALLS ####################
+
+  tasks:
+  - name: Update and upgrade apt packages
+    apt:
+      name: "{{ item }}"
+      update_cache: yes
+      state: present
+    with_items:
+      - tcl
+      - openmpi-bin
+      - openmpi-common
+      - libopenmpi2
+      - libopenmpi-dev
+      - slurm-wlm
+      - nfs-kernel-server
+      - isc-dhcp-server
+      - iptables-persistent
+
+############################################
+########### NETWORKING #####################
+
+  - name: Enable route forwarding for eth to wifi
+    replace:
+      dest=/etc/sysctl.conf
+      regexp='^#net.ipv4.ip_forward=1'
+      replace='net.ipv4.ip_forward=1'
+
+  - name: configure firewall
+    command: iptables --table nat --append POSTROUTING --out-interface wlan0 -j MASQUERADE
+  - name: configure firewall
+    command: iptables --append FORWARD --in-interface eth0 -j ACCEPT
+  - name: Configure Ethernet
+    blockinfile: |
+      dest=/etc/network/interfaces
+      content="auto eth0
+      iface eth0 inet static
+      address {{pi_login_ip}}
+      netmask 255.255.255.0
+
+      auto wlan0
+      iface wlan0 inet dhcp
+      wpa-ssid offline
+      wpa-psk uncleargyle"
+
+  - name: Restart Networking
+    command: systemctl restart networking
+
+############################################
+########### DHCP ###########################
+
+  - name: Configure DHCP
+    replace:
+      dest=/etc/dhcp/dhcpd.conf
+      regexp='^#authoritative;'
+      replace='authoritative;'
+
+  - name: Configure DHCP
+    replace:
+      dest=/etc/default/isc-dhcp-server
+      regexp='^INTERFACESv4=""'
+      replace='INTERFACESv4=eth0'
+
+  - name: configure subnet
+    blockinfile: |
+      dest=/etc/dhcp/dhcpd.conf
+      content="subnet 192.168.40.0 netmask 255.255.255.0 {
+      range 192.168.40.10 192.168.40.50;
+      option routers 192.168.40.1;
+      option domain-name "picluster.local";
+      option domain-name-servers 1.1.1.1, 8.8.8.8;
+      }
+
+      host {{pi_node01_name}} {
+      hardware ethernet {{pi_node01_mac}};
+      fixed-address {{pi_node01_ip}};}
+
+      host {{pi_node02_name}} {
+      hardware ethernet {{pi_node02_mac}};
+      fixed-address {{pi_node02_ip}};}
+
+      host {{pi_node03_name}} {
+      hardware ethernet {{pi_node03_mac}};
+      fixed-address {{pi_node03_ip}};}
+
+      host {{pi_node04_name}} {
+      hardware ethernet {{pi_node04_mac}};
+      fixed-address {{pi_node04_ip}};}
+
+      host {{pi_node05_name}} {
+      hardware ethernet {{pi_node05_mac}};
+      fixed-address {{pi_node05_ip}};}
+
+      host {{pi_node06_name}} {
+      hardware ethernet {{pi_node06_mac}};
+      fixed-address {{pi_node06_ip}};}
+
+      host {{pi_node07_name}} {
+      hardware ethernet {{pi_node07_mac}};
+      fixed-address {{pi_node07_ip}};}"
+
+
+  - name: Restart DHCP server
+    command: systemctl restart isc-dhcp-server
+
+############################################
+
+  - name: make sure scratch exists
+    file:
+      path: /scratch
+      state: directory
+  - name: make sure packages exists
+    file:
+      path: /packages
+      state: directory
+  - name: unzip slurm config
+    command: gzip -d /usr/share/doc/slurm-client/examples/slurm.conf.simple.gz
+    ignore_errors: yes
+  - name: copy slurm file over
+    command: cp /usr/share/doc/slurm-client/examples/slurm.conf.simple /etc/slurm-llnl/slurm.conf
+
+############################################
+
+  - name: enable nfs exports
+    lineinfile: dest=/etc/exports line="/packages *(rw,sync,no_subtree_check)"
+  - name: enable nfs exports
+    lineinfile: dest=/etc/exports line="/scratch *(rw,sync,no_subtree_check)"
+
+############ add new hosts here ############
+
+  - name: check host file for correct hosts
+    lineinfile: dest=/etc/hosts line="{{pi_login_ip}}        {{pi_login_name}}"
+  - name: check host file for correct hosts
+    lineinfile: dest=/etc/hosts line="{{pi_node01_ip}}        {{pi_node01_name}}"
+  - name: check host file for correct hosts
+    lineinfile: dest=/etc/hosts line="{{pi_node02_ip}}        {{pi_node02_name}}"
+  - name: check host file for correct hosts
+    lineinfile: dest=/etc/hosts line="{{pi_node03_ip}}        {{pi_node03_name}}"
+  - name: check host file for correct hosts
+    lineinfile: dest=/etc/hosts line="{{pi_node04_ip}}        {{pi_node04_name}}"
+  - name: check host file for correct hosts
+    lineinfile: dest=/etc/hosts line="{{pi_node05_ip}}        {{pi_node05_name}}"
+  - name: check host file for correct hosts
+    lineinfile: dest=/etc/hosts line="{{pi_node06_ip}}        {{pi_node06_name}}"
+  - name: check host file for correct hosts
+    lineinfile: dest=/etc/hosts line="{{pi_node07_ip}}        {{pi_node07_name}}"
+
+
+############ add new hosts here ############
+
+  - name: check slurm config is correct
+    lineinfile: dest=/etc/slurm-llnl/slurm.conf line="NodeName={{pi_login_name}} NodeAddr={{pi_login_ip}} CPUs=4 State=UNKNOWN"
+  - name: check slurm config is correct
+    lineinfile: dest=/etc/slurm-llnl/slurm.conf line="NodeName={{pi_node01_name}} NodeAddr={{pi_node01_ip}} CPUs=4 State=UNKNOWN"
+  - name: check slurm config is correct
+    lineinfile: dest=/etc/slurm-llnl/slurm.conf line="NodeName={{pi_node02_name}} NodeAddr={{pi_node02_ip}} CPUs=4 State=UNKNOWN"
+  - name: check slurm config is correct
+    lineinfile: dest=/etc/slurm-llnl/slurm.conf line="NodeName={{pi_node03_name}} NodeAddr={{pi_node03_ip}} CPUs=4 State=UNKNOWN"
+  - name: check slurm config is correct
+    lineinfile: dest=/etc/slurm-llnl/slurm.conf line="NodeName={{pi_node04_name}} NodeAddr={{pi_node04_ip}} CPUs=4 State=UNKNOWN"
+  - name: check slurm config is correct
+    lineinfile: dest=/etc/slurm-llnl/slurm.conf line="NodeName={{pi_node05_name}} NodeAddr={{pi_node05_ip}} CPUs=4 State=UNKNOWN"
+  - name: check slurm config is correct
+    lineinfile: dest=/etc/slurm-llnl/slurm.conf line="NodeName={{pi_node06_name}} NodeAddr={{pi_node06_ip}} CPUs=4 State=UNKNOWN"
+  - name: check slurm config is correct
+    lineinfile: dest=/etc/slurm-llnl/slurm.conf line="NodeName={{pi_node07_name}} NodeAddr={{pi_node07_ip}} CPUs=4 State=UNKNOWN"
+
+######## update lines in file  ########
+
+  - name: check slurm config is correct
+    lineinfile:
+      name: /etc/slurm-llnl/slurm.conf
+      regexp: "^PartitionName=debug"
+      line: PartitionName={{partition_name}} Nodes=pi_node[01-{{number_nodes}}] Default=YES MaxTime=INFINITE State=UP
+
+  - name: remove default node
+    lineinfile:
+      name: /etc/slurm-llnl/slurm.conf
+      regexp: "^NodeName=server Procs=1 State=UNKNOWN"
+      state: absent
+
+  - name: change control machine
+    lineinfile:
+      name: /etc/slurm-llnl/slurm.conf
+      regexp: "^ControlMachine="
+      line: ControlMachine={{pi_login_name}}
+
+  - name: change control machine
+    lineinfile:
+      name: /etc/slurm-llnl/slurm.conf
+      regexp: "^SelectType="
+      line: SelectType=select/cons_res
+
+  - name: change control machine
+    lineinfile:
+      name: /etc/slurm-llnl/slurm.conf
+      regexp: "^#SelectTypeParameters="
+      line: SelectTypeParameters=CR_Core
+
+############################################
+
+  - name: create slurm cgroups file
+    file:
+      path: /etc/slurm-llnl/cgroup.conf
+      state: touch
+
+  - name: create configuration in cgroup file
+    blockinfile: |
+      dest=/etc/slurm-llnl/cgroup.conf
+      content='CgroupMountpoint="/sys/fs/cgroup"
+      CgroupAutomount=yes
+      CgroupReleaseAgentDir="/etc/slurm-llnl/cgroup"
+      AllowedDevicesFile="/etc/slurm-llnl/cgroup_allowed_devices_file.conf"
+      ConstrainCores=no
+      TaskAffinity=no
+      ConstrainRAMSpace=yes
+      ConstrainSwapSpace=no
+      ConstrainDevices=no
+      AllowedRamSpace=100
+      AllowedSwapSpace=0
+      MaxRAMPercent=100
+      MaxSwapPercent=100
+      MinRAMSpace=30'
+
+  - name: create slurm cgroups file
+    file:
+      path: /etc/slurm-llnl/cgroup_allowed_devices_file.conf
+      state: touch
+
+  - name: create configuration in cgroup file
+    blockinfile: |
+      dest=/etc/slurm-llnl/cgroup_allowed_devices_file.conf
+      content="/dev/null
+      /dev/urandom
+      /dev/zero
+      /dev/sda*
+      /dev/cpu/*/*
+      /dev/pts/*
+      /scratch*
+      /packages*"
+
+
+############################################
+
+  - name: copy file to shared storage
+    command: cp /etc/slurm-llnl/cgroup.conf /scratch/
+  - name: copy files to shared storage
+    command: cp /etc/slurm-llnl/cgroup_allowed_devices_file.conf /scratch/
+  - name: copy files to shared storage
+    command: cp /etc/slurm-llnl/slurm.conf /scratch/
+  - name: cpy files to shared storage
+    command: cp /etc/munge/munge.key /scratch
+  - name: change permissions
+    command: chmod -R 777 /scratch
+  - name: change owner
+    command: chown -R pi:pi /scratch
+
+############################################
+
+  - name: enable munge
+    command: systemctl enable munge
+  - name: start munge
+    command: systemctl restart munge
+  - name: enable slurmd
+    command: systemctl enable slurmd
+  - name: restart slurmd
+    command: systemctl restart slurmd
+  - name: export nfs
+    command: exportfs -a
