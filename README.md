@@ -9,6 +9,8 @@
        '~ .~~~. ~'      | __| |_| | |_ -|_   _| -_| -_|
            '~'          |___|___|___|___| |_| |___|_|_|
 
+This initial setup is for an 8 node cluster, 1 login node with 7 compute nodes. The master is setup to nat traffic to the compute nodes as well as provide DHCP. The master node is the only one that requires connecting to the internet over the wifi.
+
 Setting up the raspberry pi cluster
 
 1. Flash raspbarian to the SD card on each of the pies.
