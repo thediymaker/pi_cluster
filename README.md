@@ -23,3 +23,6 @@ Setting up the raspberry pi cluster
 8. Run "ssh-copy-id pi@pi_nodeXX" from the login node to setup passwordless ssh
 9. Run the ansible pi_login_node_setup.yml playbook
 10. Run the ansible pi_compute_node_setup.yml playbook
+
+
+To add additional nodes, add addtional nodes to the configuration and re-run.
