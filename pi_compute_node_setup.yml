@@ -1,0 +1,96 @@
+#
+#
+#       .~~.   .~~.
+#      '. \ ' ' / .'
+#       .~ .~~~..~.                       _                          _
+#      : .~.'~'.~. :      ___ ___ ___ ___| |_ ___ ___ ___ _ _    ___|_|
+#     ~ (   ) (   ) ~    |  _| .'|_ -| . | . | -_|  _|  _| | |  | . | |
+#    ( : '~'.~.'~' : )   |_| |__,|___|  _|___|___|_| |_| |_  |  |  _|_|
+#     ~ .~ (   ) ~. ~                |_|                 |___|  |_|
+#      (  : '~' :  )      ___ _   _ _ ___ _____ ___ ___
+#       '~ .~~~. ~'      | __| |_| | |_ -|_   _| -_| -_|
+#           '~'          |___|___|___|___| |_| |___|_|_|
+#
+---
+- hosts: pi_nodes
+  user: pi
+  become: yes
+############## INSTALLS ####################
+
+  tasks:
+  - name: Update and upgrade apt packages
+    apt:
+      name: "{{ item }}"
+      update_cache: yes
+      state: present
+    with_items:
+      - nfs-common
+      - slurmd
+      - slurm-client
+
+############################################
+################ HOSTS #####################
+
+  - name: check host file for correct hosts
+    lineinfile: dest=/etc/hosts line="{{pi_login_ip}}        {{pi_login_name}}"
+  - name: check host file for correct hosts
+    lineinfile: dest=/etc/hosts line="{{pi_node01_ip}}        {{pi_node01_name}}"
+  - name: check host file for correct hosts
+    lineinfile: dest=/etc/hosts line="{{pi_node02_ip}}        {{pi_node02_name}}"
+  - name: check host file for correct hosts
+    lineinfile: dest=/etc/hosts line="{{pi_node03_ip}}        {{pi_node03_name}}"
+  - name: check host file for correct hosts
+    lineinfile: dest=/etc/hosts line="{{pi_node04_ip}}        {{pi_node04_name}}"
+  - name: check host file for correct hosts
+    lineinfile: dest=/etc/hosts line="{{pi_node05_ip}}        {{pi_node05_name}}"
+  - name: check host file for correct hosts
+    lineinfile: dest=/etc/hosts line="{{pi_node06_ip}}        {{pi_node06_name}}"
+  - name: check host file for correct hosts
+    lineinfile: dest=/etc/hosts line="{{pi_node07_ip}}        {{pi_node07_name}}"
+
+
+
+############################################
+########### STORAGE ########################
+
+  - name: make sure scratch exists
+    file:
+      path: /scratch
+      state: directory
+
+  - name: make sure packages exists
+    file:
+      path: /packages
+      state: directory
+
+  - name: mount scratch
+    lineinfile: dest=/etc/fstab line="{{pi_login_name}}:/scratch        /scratch        nfs     defaults        0 0"
+
+  - name: mount packages
+    lineinfile: dest=/etc/fstab line="{{pi_login_name}}:/packages        /packages        nfs     defaults        0 0"
+
+  - name: mount all
+    command: mount -a
+
+  - name: copy files
+    command: sudo cp /scratch/munge.key /etc/munge/munge.key
+
+  - name: copy slurm file over
+    command: sudo cp /scratch/slurm.conf /etc/slurm-llnl/slurm.conf
+
+  - name: copy slurm files over
+    command: sudo cp /scratch/cgroup.conf /etc/slurm-llnl/cgroup.conf
+
+  - name: copy slurm files over
+    command: sudo cp /scratch/cgroup_allowed_devices_file.conf /etc/slurm-llnl/cgroup_allowed_devices_file.conf
+
+############################################
+
+  - name: enable munge
+    command: systemctl enable munge
+  - name: start munge
+    command: systemctl restart munge
+  - name: enable slurmd
+    command: systemctl enable slurmd
+  - name: restart slurmd
+    command: systemctl restart slurmd
